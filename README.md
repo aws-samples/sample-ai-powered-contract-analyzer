@@ -165,8 +165,8 @@ aws cloudwatch put-metric-alarm \
 ```bash
 # 1. Open AWS CloudShell in your AWS Console
 # 2. Clone and deploy:
-git clone <your-repo-url>
-cd contract-analyzer
+git clone https://github.com/aws-samples/sample-ai-powered-contract-analyzer.git
+cd sample-ai-powered-contract-analyzer/
 ./scripts/deployment/setup-and-deploy.sh
 ```
 
