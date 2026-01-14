@@ -1,0 +1,231 @@
+# Project Structure
+
+Clean, organized structure for the Contract Analyzer project.
+
+## Directory Layout
+
+```
+contract-analyzer/
+├── README.md                          # Main project documentation
+├── PROJECT_STRUCTURE.md               # This file
+│
+├── docs/                              # All documentation
+│   ├── DEPLOYMENT.md                  # Complete deployment guide
+│   └── GUIDE.md                       # Feature and usage guide
+│
+├── scripts/                           # All scripts
+│   ├── deployment/                    # Deployment automation
+│   │   ├── setup-and-deploy.sh        # Main deployment script
+│   │   ├── cleanup.sh                 # Cleanup script
+│   │   ├── buildspec.yml              # CodeBuild build specification
+│   │   └── codebuild-setup.yaml       # CloudFormation template
+│   └── generate-frontend-config.py    # Frontend config generator
+│
+├── backend/                           # Backend infrastructure
+│   ├── app.py                         # CDK application entry point
+│   ├── cdk.json                       # CDK configuration
+│   ├── requirements.txt               # Python dependencies for CDK
+│   ├── build_layer.sh                 # Lambda layer build script
+│   │
+│   ├── stacks/                        # CDK stack definitions
+│   │   └── contract_analyzer_stack.py # Main infrastructure stack
+│   │
+│   ├── lambda/                        # Lambda function code
+│   │   ├── upload.py                  # Initialize upload
+│   │   ├── analyze.py                 # Contract analysis
+│   │   ├── chat.py                    # Chatbot
+│   │   ├── list_contracts.py          # List user contracts
+│   │   ├── get_results.py             # Get analysis results
+│   │   └── requirements.txt           # Lambda dependencies
+│   │
+│   └── lambda_layer/                  # Lambda layer (built)
+│       └── python/                    # Python packages
+│
+├── frontend/                          # Frontend application
+│   ├── package.json                   # Node.js dependencies
+│   ├── public/                        # Static assets
+│   │   └── index.html
+│   │
+│   └── src/                           # React source code
+│       ├── index.js                   # Entry point
+│       ├── App.js                     # Main component
+│       ├── aws-config.js              # AWS configuration (auto-generated)
+│       │
+│       └── components/                # React components
+│           ├── ContractUpload.js
+│           ├── ContractList.js
+│           ├── ContractResults.js
+│           └── ContractChat.js
+│
+├── deploy-frontend.sh                 # Manual frontend deployment
+└── generated-diagrams/                # Architecture diagrams
+    └── architecture-overview.png
+```
+
+## File Purposes
+
+### Root Level
+
+| File | Purpose |
+|------|---------|
+| `README.md` | Main project documentation, quick start, features |
+| `PROJECT_STRUCTURE.md` | This file - project organization guide |
+| `deploy-frontend.sh` | Manual frontend deployment (alternative to automated) |
+
+### Documentation (`docs/`)
+
+| File | Purpose |
+|------|---------|
+| `DEPLOYMENT.md` | Complete deployment guide with CloudShell + CodeBuild |
+| `GUIDE.md` | Detailed feature guide, usage, troubleshooting |
+
+### Scripts (`scripts/`)
+
+#### Deployment Scripts (`scripts/deployment/`)
+
+| File | Purpose |
+|------|---------|
+| `setup-and-deploy.sh` | **Main deployment script** - Run this to deploy! |
+| `cleanup.sh` | Delete all AWS resources |
+| `buildspec.yml` | CodeBuild build specification (phases, commands) |
+| `codebuild-setup.yaml` | CloudFormation template for CodeBuild project |
+
+#### Utility Scripts (`scripts/`)
+
+| File | Purpose |
+|------|---------|
+| `generate-frontend-config.py` | Auto-generates `aws-config.js` from CDK outputs |
+
+### Backend (`backend/`)
+
+#### Infrastructure
+
+| File | Purpose |
+|------|---------|
+| `app.py` | CDK application entry point |
+| `cdk.json` | CDK configuration and context |
+| `requirements.txt` | Python dependencies for CDK |
+| `build_layer.sh` | Builds Lambda layer with Strands framework |
+
+#### CDK Stacks (`backend/stacks/`)
+
+| File | Purpose |
+|------|---------|
+| `contract_analyzer_stack.py` | Main infrastructure stack (Lambda, API Gateway, DynamoDB, S3, CloudFront, Cognito) |
+
+#### Lambda Functions (`backend/lambda/`)
+
+| File | Purpose |
+|------|---------|
+| `upload.py` | Initialize contract upload, create DynamoDB record |
+| `analyze.py` | Extract text with Textract, analyze with Bedrock |
+| `chat.py` | Chatbot interactions with contract context |
+| `list_contracts.py` | List all contracts for authenticated user |
+| `get_results.py` | Get analysis results for specific contract |
+| `requirements.txt` | Lambda dependencies (Strands framework) |
+
+### Frontend (`frontend/`)
+
+#### Configuration
+
+| File | Purpose |
+|------|---------|
+| `package.json` | Node.js dependencies and scripts |
+| `aws-config.js` | AWS configuration (auto-generated by deployment) |
+
+#### React Components (`frontend/src/components/`)
+
+| File | Purpose |
+|------|---------|
+| `ContractUpload.js` | File upload component |
+| `ContractList.js` | Dashboard with contract list |
+| `ContractResults.js` | Display analysis results |
+| `ContractChat.js` | Floating chat widget |
+
+## Key Principles
+
+### 1. Clean Root Directory
+- Only essential files in root
+- All documentation in `docs/`
+- All scripts in `scripts/`
+
+### 2. Logical Grouping
+- Deployment scripts together in `scripts/deployment/`
+- Backend code in `backend/`
+- Frontend code in `frontend/`
+
+### 3. Clear Naming
+- Descriptive file names
+- Consistent naming conventions
+- Purpose obvious from name
+
+### 4. Documentation Co-location
+- Deployment docs with deployment scripts
+- Feature docs separate from deployment
+- README as entry point
+
+## Quick Reference
+
+### To Deploy
+```bash
+./scripts/deployment/setup-and-deploy.sh
+```
+
+### To Clean Up
+```bash
+./scripts/deployment/cleanup.sh
+```
+
+### To Update Frontend Only
+```bash
+./deploy-frontend.sh
+```
+
+### To Build Lambda Layer
+```bash
+cd backend
+./build_layer.sh
+```
+
+### To Deploy Backend Only (Manual)
+```bash
+cd backend
+cdk deploy
+```
+
+## Generated Files (Not in Git)
+
+These files are generated during build/deployment:
+
+```
+backend/
+├── cdk.out/                    # CDK synthesis output
+├── lambda_layer/               # Built Lambda layer
+└── .venv/                      # Python virtual environment
+
+frontend/
+├── build/                      # React production build
+├── node_modules/               # Node.js dependencies
+└── src/aws-config.js           # Auto-generated (has template in git)
+```
+
+## Environment-Specific Files
+
+### CloudShell
+- Uses `scripts/deployment/setup-and-deploy.sh`
+- Automatically detects region
+- No local setup needed
+
+### Local Development
+- Uses `backend/build_layer.sh`
+- Uses `cdk deploy` directly
+- Requires local prerequisites
+
+### CI/CD (GitHub Actions)
+- Uses `scripts/deployment/buildspec.yml` as reference
+- Requires AWS credentials in secrets
+- Automated on push
+
+---
+
+**This structure keeps the project clean, organized, and easy to navigate.**

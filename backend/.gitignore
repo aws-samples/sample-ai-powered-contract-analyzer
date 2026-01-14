@@ -1,0 +1,28 @@
+# CDK
+.cdk.staging/
+cdk.out/
+*.js
+!jest.config.js
+*.d.ts
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Lambda layer
+lambda_layer/
+lambda_layer.zip
+
+# Logs
+*.log
+
+.DS_Store

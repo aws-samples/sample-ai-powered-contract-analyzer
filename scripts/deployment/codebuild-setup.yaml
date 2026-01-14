@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CodeBuild project for Contract Analyzer deployment'
+
+Parameters:
+  SourceBucket:
+    Type: String
+    Description: S3 bucket containing the source code zip file
+  
+  SourceKey:
+    Type: String
+    Default: contract-analyzer.zip
+    Description: S3 key for the source code zip file
+  
+  DeploymentRegion:
+    Type: String
+    Description: AWS region where the application will be deployed
+
+Resources:
+  # IAM Role for CodeBuild
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'ContractAnalyzerCodeBuildRole-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        # Note: Using PowerUserAccess for simplicity
+        # In production, use a more restrictive policy
+        - arn:aws:iam::aws:policy/PowerUserAccess
+      Tags:
+        - Key: Project
+          Value: ContractAnalyzer
+
+  # CodeBuild Project
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: ContractAnalyzerBuild
+      Description: Builds and deploys the Contract Analyzer application
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        EnvironmentVariables:
+          - Name: AWS_REGION
+            Value: !Ref DeploymentRegion
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+      Source:
+        Type: S3
+        Location: !Sub '${SourceBucket}/${SourceKey}'
+        BuildSpec: scripts/deployment/buildspec.yml
+      TimeoutInMinutes: 60
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CodeBuildLogGroup
+      Tags:
+        - Key: Project
+          Value: ContractAnalyzer
+
+  # CloudWatch Log Group for CodeBuild
+  CodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/codebuild/ContractAnalyzerBuild
+      RetentionInDays: 7
+
+Outputs:
+  CodeBuildProjectName:
+    Description: Name of the CodeBuild project
+    Value: !Ref CodeBuildProject
+    Export:
+      Name: ContractAnalyzerCodeBuildProject
+  
+  CodeBuildProjectArn:
+    Description: ARN of the CodeBuild project
+    Value: !GetAtt CodeBuildProject.Arn
+  
+  ServiceRoleArn:
+    Description: ARN of the CodeBuild service role
+    Value: !GetAtt CodeBuildServiceRole.Arn

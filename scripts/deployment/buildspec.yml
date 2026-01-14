@@ -1,0 +1,95 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+      nodejs: 22
+    commands:
+      - echo "Installing dependencies..."
+      - echo "Region $AWS_REGION"
+      - echo "Account $AWS_ACCOUNT_ID"
+      - echo "Installing AWS CDK"
+      - npm install -g aws-cdk
+      - cdk --version
+      - echo "Installing Python dependencies for CDK"
+      - cd backend
+      - pip install -r requirements.txt --upgrade
+      - cd ..
+      - echo "Installing frontend dependencies"
+      - cd frontend
+      - npm install
+      - cd ..
+
+  pre_build:
+    commands:
+      - echo "Pre-build phase - Building Lambda layer"
+      - cd backend
+      - echo "Building Lambda layer for Python 3.12"
+      - rm -rf lambda_layer
+      - mkdir -p lambda_layer/python
+      - echo "Installing dependencies for Lambda layer"
+      - |
+        pip install -r lambda/requirements.txt \
+          --python-version 3.12 \
+          --platform manylinux2014_x86_64 \
+          --target lambda_layer/python \
+          --only-binary=:all: \
+          --upgrade
+      - echo "Lambda layer built successfully"
+      - du -sh lambda_layer/
+      - cd ..
+
+  build:
+    commands:
+      - echo "Build phase - Deploying infrastructure with CDK"
+      - cd backend
+      - echo "Checking CDK bootstrap status"
+      - cdk bootstrap aws://$AWS_ACCOUNT_ID/$AWS_REGION --force || echo "Bootstrap completed with warnings"
+      - echo "Deploying CDK stack"
+      - cdk deploy --require-approval never --region $AWS_REGION
+      - echo "Capturing CDK outputs"
+      - aws cloudformation describe-stacks --stack-name ContractAnalyzerStack --region $AWS_REGION --query 'Stacks[0].Outputs' --output json > /tmp/cdk-outputs.json
+      - cat /tmp/cdk-outputs.json
+      - cd ..
+
+  post_build:
+    commands:
+      - echo "Post-build phase - Deploying frontend"
+      - echo "Generating frontend configuration"
+      - python3 scripts/generate-frontend-config.py /tmp/cdk-outputs.json frontend/src/aws-config.js
+      - echo "Building React application"
+      - cd frontend
+      - npm run build
+      - cd ..
+      - echo "Deploying frontend to S3"
+      - |
+        FRONTEND_BUCKET=$(aws cloudformation describe-stacks --stack-name ContractAnalyzerStack --region $AWS_REGION --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' --output text)
+        echo "Frontend bucket: $FRONTEND_BUCKET"
+        echo "Uploading files to S3"
+        aws s3 sync frontend/build/ "s3://$FRONTEND_BUCKET" --delete --cache-control "public,max-age=31536000,immutable" --exclude "index.html" --exclude "asset-manifest.json" --exclude "service-worker.js" --region $AWS_REGION
+        echo "Uploading index.html with no-cache"
+        aws s3 cp frontend/build/index.html "s3://$FRONTEND_BUCKET/index.html" --cache-control "no-cache,no-store,must-revalidate" --content-type "text/html" --region $AWS_REGION
+        echo "Uploading other non-cacheable files if they exist"
+        if [ -f "frontend/build/asset-manifest.json" ]; then
+          aws s3 cp frontend/build/asset-manifest.json "s3://$FRONTEND_BUCKET/asset-manifest.json" --cache-control "no-cache" --region $AWS_REGION
+        fi
+        if [ -f "frontend/build/service-worker.js" ]; then
+          aws s3 cp frontend/build/service-worker.js "s3://$FRONTEND_BUCKET/service-worker.js" --cache-control "no-cache" --region $AWS_REGION
+        fi
+      - echo "Invalidating CloudFront cache"
+      - |
+        DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name ContractAnalyzerStack --region $AWS_REGION --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' --output text)
+        echo "Distribution ID: $DISTRIBUTION_ID"
+        aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*" --region $AWS_REGION
+      - echo "Deployment complete"
+
+artifacts:
+  files:
+    - /tmp/cdk-outputs.json
+  name: ContractAnalyzerOutputs
+
+cache:
+  paths:
+    - '/root/.npm/**/*'
+    - '/root/.cache/pip/**/*'
